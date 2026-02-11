@@ -9,6 +9,20 @@ const db = require('./database');
 const achievements = require('./achievements');
 const multiplayer = require('./multiplayer');
 
+// ========== HEALTH CHECK ENDPOINT ==========
+const express = require('express');
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send('Bot is running! ✅');
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`Health check server running on port ${PORT}`);
+});
+// ========== END HEALTH CHECK ==========
+
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const activeGames = new Map();
 
