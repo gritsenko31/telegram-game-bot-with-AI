@@ -1,16 +1,8 @@
 require('dotenv').config();  // ПЕРВЫЙ!
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fetch = require('node-fetch');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel(
-  { model: "gemini-1.5-flash" },
-  { 
-    baseUrl: "https://generativelanguage.googleapis.com/v1"  // ✅ Принудительно v1
-  }
-);
-
-
-
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const { Telegraf, Markup } = require('telegraf');
 const db = require('./database');
@@ -149,10 +141,9 @@ bot.on('text', async (ctx) => {
     const room = await db.getRoom(roomId);
     
     if (room && room.status === 'playing' && room.players.some(p => p.userId === userId)) {
-     if (isNaN(guess)) {
-  // AI будет обработать ниже
-}
-
+      if (isNaN(guess)) {
+        return ctx.reply('❌ Please enter a valid number!');
+      }
       
       if (guess < 1 || guess > room.maxNumber) {
         return ctx.reply(`❌ Number must be between 1 and ${room.maxNumber}!`);
@@ -253,9 +244,21 @@ bot.on('text', async (ctx) => {
       Be encouraging and fun!
       User's message: ${text}`;
       
-      const result = await model.generateContent(prompt);
-      const aiResponse = result.response.text();
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
       
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+      
+      const aiResponse = data.candidates[0].content.parts[0].text;
       ctx.reply(aiResponse);
     } catch (error) {
       console.error('AI Error:', error);
@@ -279,7 +282,6 @@ async function handleTimeout(userId) {
   );
 }
 
-// Остальные обработчики действий остаются БЕЗ ИЗМЕНЕНИЙ
 bot.action('stats', async (ctx) => {
   await ctx.answerCbQuery();
   
