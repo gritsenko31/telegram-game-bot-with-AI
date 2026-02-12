@@ -1,4 +1,4 @@
-require('dotenv').config();  // ПЕРВЫЙ!!
+require('dotenv').config();  // ПЕРВЫЙ!
 const fetch = require('node-fetch');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -119,7 +119,7 @@ bot.action(/solo_(easy|medium|hard)/, async (ctx) => {
   );
 });
 
-// ✅ НОВЫЙ ОБРАБОТЧИК С AI
+// ✅ ОБНОВЛЕННЫЙ ОБРАБОТЧИК - AI ДОСТУПЕН ВСЕГДА
 bot.on('text', async (ctx) => {
   const userId = ctx.from.id;
   const text = ctx.message.text;
@@ -129,7 +129,40 @@ bot.on('text', async (ctx) => {
   
   const guess = parseInt(text);
   
-  // МУЛЬТИПЛЕЕР (твой оригинальный код)
+  // ✅ AI РЕЖИМ — если НЕ число, ВСЕГДА отвечает AI
+  if (isNaN(guess)) {
+    try {
+      const prompt = `You are a friendly assistant in a number guessing game bot. 
+      Users can ask about rules, request hints, or just chat. 
+      Always respond in English, keep answers brief (under 100 words) and friendly.
+      Be encouraging and fun!
+      User's message: ${text}`;
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+      
+      const aiResponse = data.candidates[0].content.parts[0].text;
+      return ctx.reply(aiResponse);
+    } catch (error) {
+      console.error('AI Error:', error);
+      return ctx.reply('Sorry, I couldn\'t process your message. Try again or type /start for a new game! 🎮');
+    }
+  }
+  
+  // ===== ДАЛЬШЕ ТОЛЬКО ЧИСЛА =====
+  
+  // МУЛЬТИПЛЕЕР
   const mpRooms = Array.from(multiplayer.activeRooms.entries());
   const userRoom = mpRooms.find(([roomId, data]) => {
     const room = data.room;
@@ -141,10 +174,6 @@ bot.on('text', async (ctx) => {
     const room = await db.getRoom(roomId);
     
     if (room && room.status === 'playing' && room.players.some(p => p.userId === userId)) {
-      if (isNaN(guess)) {
-        return ctx.reply('❌ Please enter a valid number!');
-      }
-      
       if (guess < 1 || guess > room.maxNumber) {
         return ctx.reply(`❌ Number must be between 1 and ${room.maxNumber}!`);
       }
@@ -183,12 +212,8 @@ bot.on('text', async (ctx) => {
     }
   }
   
-  // СОЛО ИГРА (твой оригинальный код)
+  // СОЛО ИГРА
   if (activeGame && !activeGame.waitingForRoomCode) {
-    if (isNaN(guess)) {
-      return ctx.reply('❌ Please enter a valid number!');
-    }
-    
     if (guess < 1 || guess > activeGame.maxNumber) {
       return ctx.reply(`❌ Number must be between 1 and ${activeGame.maxNumber}!`);
     }
@@ -218,7 +243,7 @@ bot.on('text', async (ctx) => {
         });
       }
       
-      ctx.reply(
+      return ctx.reply(
         message,
         Markup.inlineKeyboard([
           [Markup.button.callback('🔄 Play Again', 'solo_game')],
@@ -230,41 +255,12 @@ bot.on('text', async (ctx) => {
       const hint = result === 'higher' ? 'HIGHER ⬆️' : 'LOWER ⬇️';
       const dbInstance = db.db();
       const gameData = await dbInstance.collection('games').findOne({ _id: activeGame.gameId });
-      ctx.reply(`My number is ${hint}\nAttempts: ${gameData.attempts}`);
+      return ctx.reply(`My number is ${hint}\nAttempts: ${gameData.attempts}`);
     }
-    return; // ✅ ВАЖНО: выход после обработки игры
   }
   
-  // ✅ AI ЧАТ (НОВОЕ!)
-  if (isNaN(guess)) {
-    try {
-      const prompt = `You are a friendly assistant in a number guessing game bot. 
-      Users can ask about rules, request hints, or just chat. 
-      Always respond in English, keep answers brief (under 100 words) and friendly.
-      Be encouraging and fun!
-      User's message: ${text}`;
-      
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error.message);
-      }
-      
-      const aiResponse = data.candidates[0].content.parts[0].text;
-      ctx.reply(aiResponse);
-    } catch (error) {
-      console.error('AI Error:', error);
-      ctx.reply('Sorry, I couldn\'t process your message. Try again or type /start for a new game! 🎮');
-    }
-  }
+  // Если число, но НЕТ активной игры
+  return ctx.reply('No active game. Type /start to begin!', mainMenuKeyboard());
 });
 
 async function handleTimeout(userId) {
@@ -454,7 +450,8 @@ bot.help((ctx) => {
     '2. First to guess wins!\n' +
     '3. 2 minute time limit\n\n' +
     '🤖 AI Assistant:\n' +
-    'Ask me anything! "How to play?", "Give hint", "Tell joke"\n\n' +
+    'Ask me anything! "How to play?", "Give hint", "Tell joke"\n' +
+    'Works ANYTIME during gameplay!\n\n' +
     '🎖️ Unlock achievements and climb the leaderboard!\n\n' +
     'Commands:\n' +
     '/start - Main menu\n' +
