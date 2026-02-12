@@ -141,9 +141,10 @@ bot.on('text', async (ctx) => {
     const room = await db.getRoom(roomId);
     
     if (room && room.status === 'playing' && room.players.some(p => p.userId === userId)) {
-      if (isNaN(guess)) {
-        return ctx.reply('❌ Please enter a valid number!');
-      }
+     if (isNaN(guess)) {
+  // AI будет обработать ниже
+}
+
       
       if (guess < 1 || guess > room.maxNumber) {
         return ctx.reply(`❌ Number must be between 1 and ${room.maxNumber}!`);
