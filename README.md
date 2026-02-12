@@ -94,7 +94,7 @@ AI-assisted development workflow
 
  🤖 AI Assistant Update (February 12, 2026)
 
-The bot now includes an **intelligent AI assistant** powered by Google Gemini 2.5 Flash!
+The bot now includes an **intelligent AI assistant** powered by Grok AI!
 
 ### What's New:
 - **Always Available**: Chat with AI anytime - during gameplay, in menus, or when idle
